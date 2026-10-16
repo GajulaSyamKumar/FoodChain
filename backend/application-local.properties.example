@@ -1,0 +1,12 @@
+# ============================================================
+# FOODCHAIN LOCAL OVERRIDES (Copy to application-local.properties)
+# This file is ignored by Git and will never be committed.
+# ============================================================
+
+# Replace with your actual local PostgreSQL password from pgAdmin 4
+spring.datasource.password=your_postgres_password_here
+
+# Uncomment and adjust below if your pgAdmin server uses different settings:
+# spring.datasource.url=jdbc:postgresql://localhost:5432/foodchain_db
+# spring.datasource.username=postgres
+# spring.jpa.hibernate.ddl-auto=update
