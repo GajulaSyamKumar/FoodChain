@@ -61,11 +61,7 @@ public class OrderService {
     }
 
     public List<OrderResponse> getOrdersByCustomer(Long customerId) {
-        if (customerId == null) {
-            return List.of();
-        }
         return orderRepository.findByCustomerId(customerId).stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(OrderResponse::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -102,7 +98,10 @@ public class OrderService {
             customer = customerRepository.findById(request.getCustomerId()).orElse(null);
         }
         if (customer == null) {
-            throw new InvalidOperationException("Customer account not identified. Please register or sign in as a customer before placing an order.");
+            customer = customerRepository.findAll().stream().findFirst().orElseGet(() -> {
+                Customer newCust = new Customer("CUST-1001", "Customer Demo", "customer@foodchain.local");
+                return customerRepository.save(newCust);
+            });
         }
 
         // Deduct stock atomically

@@ -4,18 +4,14 @@
 -- Differentiates:
 --   1. USER (Farmer / Producer): Produces food, manages inventory & fulfills orders
 --   2. CUSTOMER (Buyer / Consumer): Browses produce, places orders & tracks delivery
--- Credentials: Dynamically registered via backend and stored in PostgreSQL
 -- ============================================================
 
 -- Table: farmers (User / Farmer domain)
 CREATE TABLE IF NOT EXISTS farmers (
     id BIGSERIAL PRIMARY KEY,
-    farmer_code VARCHAR(50) UNIQUE NOT NULL,
+    farmer_code VARCHAR(50) UNIQUE,
     name VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
-    email VARCHAR(255),
-    phone VARCHAR(50),
-    password VARCHAR(255) NOT NULL DEFAULT '1234',
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -23,25 +19,11 @@ CREATE TABLE IF NOT EXISTS farmers (
 -- Table: customers (Customer / Buyer domain)
 CREATE TABLE IF NOT EXISTS customers (
     id BIGSERIAL PRIMARY KEY,
-    customer_code VARCHAR(50) UNIQUE NOT NULL,
+    customer_code VARCHAR(50) UNIQUE,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
-    phone VARCHAR(50),
-    city VARCHAR(100) DEFAULT 'Vijayawada',
-    address TEXT,
-    password VARCHAR(255) NOT NULL DEFAULT '1234',
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
--- Ensure columns exist in case tables were previously created without them
-ALTER TABLE farmers ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '1234';
-ALTER TABLE farmers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
-ALTER TABLE farmers ADD COLUMN IF NOT EXISTS email VARCHAR(255);
-
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '1234';
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS city VARCHAR(100) DEFAULT 'Vijayawada';
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS address TEXT;
 
 -- View: users (Provides pgAdmin and SQL queries seamless access to Farmer/User records)
 CREATE OR REPLACE VIEW users AS
@@ -50,8 +32,6 @@ SELECT
     farmer_code AS user_code,
     name,
     city,
-    email,
-    phone,
     'FARMER' AS role,
     created_at,
     updated_at
@@ -106,13 +86,18 @@ CREATE TABLE IF NOT EXISTS tracking_history (
     checkpoint_time TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create Indexes for fast lookup
-CREATE INDEX IF NOT EXISTS idx_farmers_code ON farmers(farmer_code);
-CREATE INDEX IF NOT EXISTS idx_farmers_name ON farmers(LOWER(name));
-CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code);
-CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(LOWER(email));
+-- Create Indexes
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(LOWER(product_name));
 CREATE INDEX IF NOT EXISTS idx_products_farmer ON products(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_farmer ON orders(farmer_name);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+-- Seed Sample Customers if empty
+INSERT INTO customers (customer_code, name, email)
+SELECT 'CUST-1001', 'Kiran Varma', 'kiran@foodchain.local'
+WHERE NOT EXISTS (SELECT 1 FROM customers WHERE customer_code = 'CUST-1001');
+
+INSERT INTO customers (customer_code, name, email)
+SELECT 'CUST-1002', 'Ananya Sharma', 'ananya@foodchain.local'
+WHERE NOT EXISTS (SELECT 1 FROM customers WHERE customer_code = 'CUST-1002');

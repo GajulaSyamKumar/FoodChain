@@ -12,8 +12,14 @@ export function AuthProvider({ children }) {
     } catch (e) {
       // ignore parse error
     }
-    // No predeclared user — users must enroll or sign in with their real database credentials
-    return null;
+    // Default demo persona: Farmer Lakshmi Devi or null
+    return {
+      role: 'customer',
+      id: 1,
+      name: 'Kiran Varma',
+      email: 'kiran@foodchain.local',
+      customerCode: 'CUST-1001',
+    };
   });
 
   useEffect(() => {
@@ -27,12 +33,10 @@ export function AuthProvider({ children }) {
   const loginAsFarmer = (farmerData) => {
     const farmerUser = {
       role: 'farmer',
-      id: farmerData.id,
-      name: farmerData.name,
+      id: farmerData.id || 1,
+      name: farmerData.name || 'Lakshmi Devi',
       city: farmerData.city || 'Vijayawada',
-      farmerCode: farmerData.farmerCode,
-      email: farmerData.email,
-      phone: farmerData.phone,
+      farmerCode: farmerData.farmerCode || 'FARM-101',
     };
     setUser(farmerUser);
     return farmerUser;
@@ -41,13 +45,10 @@ export function AuthProvider({ children }) {
   const loginAsCustomer = (customerData) => {
     const customerUser = {
       role: 'customer',
-      id: customerData.id,
-      name: customerData.name,
-      email: customerData.email,
-      customerCode: customerData.customerCode,
-      phone: customerData.phone,
-      city: customerData.city || 'Vijayawada',
-      address: customerData.address,
+      id: customerData.id || 1,
+      name: customerData.name || 'Kiran Varma',
+      email: customerData.email || 'kiran@foodchain.local',
+      customerCode: customerData.customerCode || 'CUST-1001',
     };
     setUser(customerUser);
     return customerUser;
@@ -55,7 +56,6 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   return (

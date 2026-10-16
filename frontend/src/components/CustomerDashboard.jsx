@@ -23,7 +23,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { getProducts, getCustomerOrders, placeOrder, cancelOrder } from '../services/api.js';
+import { getProducts, getOrders, placeOrder, cancelOrder } from '../services/api.js';
 import { cities } from '../data/mockData.js';
 
 const timelineSteps = ['Order Placed', 'Prepared', 'Dispatched', 'In Transit', 'Out for Delivery', 'Delivered'];
@@ -33,9 +33,8 @@ export default function CustomerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const isCustomer = user && user.role === 'customer';
-  const customerName = isCustomer ? user.name : 'Guest Customer';
-  const customerEmail = isCustomer ? (user.email || 'Not provided') : 'Not signed in';
+  const customerName = user?.role === 'customer' ? user.name : 'Kiran Varma';
+  const customerEmail = user?.email || 'kiran@foodchain.local';
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -55,24 +54,18 @@ export default function CustomerDashboard() {
   // Selected order to view detailed delivery timeline
   const [trackedOrder, setTrackedOrder] = useState(null);
 
-  // Fetch live products and ONLY this customer's orders from PostgreSQL
+  // Fetch live products and orders
   const fetchData = async () => {
     try {
       setLoading(true);
-      const prodList = await getProducts();
+      const [prodList, orderList] = await Promise.all([
+        getProducts(),
+        getOrders().catch(() => []),
+      ]);
       setProducts(prodList || []);
-
-      if (user && user.role === 'customer' && user.id) {
-        const myCustomerOrders = await getCustomerOrders(user.id).catch(() => []);
-        setOrders(myCustomerOrders || []);
-        if (myCustomerOrders && myCustomerOrders.length > 0) {
-          setTrackedOrder(myCustomerOrders[0]);
-        } else {
-          setTrackedOrder(null);
-        }
-      } else {
-        setOrders([]);
-        setTrackedOrder(null);
+      setOrders(orderList || []);
+      if (orderList && orderList.length > 0 && !trackedOrder) {
+        setTrackedOrder(orderList[0]);
       }
     } finally {
       setLoading(false);
@@ -81,7 +74,7 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, []);
 
   // Filter products by search, city, and category
   const filteredProducts = products.filter((p) => {
@@ -92,18 +85,17 @@ export default function CustomerDashboard() {
     return matchesQuery && matchesCity && matchesCategory;
   });
 
-  // Orders are already scoped to this customer from backend /api/orders/customer/:id
-  const myOrders = orders;
+  // Filter orders for this customer
+  const myOrders = orders.filter((o) => {
+    if (!user) return true;
+    return o.customerId === user.id || o.customerName === user.name || (user.name && (o.customerName || '').toLowerCase().includes(user.name.toLowerCase()));
+  });
 
   const activeDeliveries = myOrders.filter((o) => o.status !== 'Delivered' && o.status !== 'Cancelled');
   const deliveredCount = myOrders.filter((o) => o.status === 'Delivered').length;
 
   // Open Quick Order Modal
   const openQuickOrder = (product) => {
-    if (!isCustomer) {
-      navigate('/login');
-      return;
-    }
     setOrderModalProduct(product);
     setOrderQuantity(Math.min(2, product.quantity || 1));
     setOrderDestination(cities[0]);
@@ -111,18 +103,12 @@ export default function CustomerDashboard() {
     setOrderNotice('');
   };
 
-  // Submit quick order with strictly bound customerId
+  // Submit quick order
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
     if (!orderModalProduct) return;
     setOrderError('');
     setOrderNotice('');
-
-    if (!user || user.role !== 'customer' || !user.id) {
-      setOrderError('Please sign in or register as a customer to place an order.');
-      return;
-    }
-
     setOrdering(true);
 
     try {
@@ -130,7 +116,6 @@ export default function CustomerDashboard() {
         productId: orderModalProduct.id,
         quantity: orderQuantity,
         destination: orderDestination,
-        customerId: user.id,
       });
 
       setOrderNotice(`Order placed successfully! Order ID: ${created.id}`);
@@ -201,28 +186,6 @@ export default function CustomerDashboard() {
       </div>
 
       {/* Customer Quick Stats */}
-      {!isCustomer && (
-        <div style={{ background: '#fff5f0', border: '1px solid #f2cfbf', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <AlertCircle size={22} color="#d77c5a" />
-            <div>
-              <b style={{ color: '#883b19', display: 'block', fontSize: '13px' }}>Customer Account Required for Orders &amp; Tracking</b>
-              <span style={{ color: '#735043', fontSize: '12px' }}>
-                You are currently browsing the public catalog. To place orders and view your private deliveries, sign in or enroll your customer credentials in PostgreSQL (pgAdmin).
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="button button-dark"
-            style={{ background: '#d77c5a', borderColor: '#d77c5a', whiteSpace: 'nowrap', height: '34px', fontSize: '12px' }}
-            onClick={() => navigate('/login')}
-          >
-            Sign In / Register Customer
-          </button>
-        </div>
-      )}
-
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-top">

@@ -46,10 +46,7 @@ public class FarmerService {
         Farmer farmer = new Farmer();
         farmer.setName(request.getName());
         farmer.setCity(request.getCity() != null ? request.getCity() : "Vijayawada");
-        farmer.setEmail(request.getEmail());
-        farmer.setPhone(request.getPhone());
-        farmer.setPassword(request.getPassword() != null && !request.getPassword().isBlank() ? request.getPassword() : "1234");
-        farmer.setFarmerCode(request.getFarmerCode() != null && !request.getFarmerCode().isBlank() ? request.getFarmerCode() : "FARM-" + (System.currentTimeMillis() % 10000));
+        farmer.setFarmerCode(request.getFarmerCode() != null ? request.getFarmerCode() : "FARM-" + System.currentTimeMillis());
         Farmer saved = farmerRepository.save(farmer);
         return FarmerDto.fromEntity(saved);
     }

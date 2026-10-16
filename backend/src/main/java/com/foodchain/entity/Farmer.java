@@ -20,12 +20,6 @@ public class Farmer {
     @Column(nullable = false)
     private String city;
 
-    private String email;
-
-    private String phone;
-
-    private String password = "1234";
-
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -38,17 +32,6 @@ public class Farmer {
         this.farmerCode = farmerCode;
         this.name = name;
         this.city = city;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public Farmer(String farmerCode, String name, String city, String email, String phone, String password) {
-        this.farmerCode = farmerCode;
-        this.name = name;
-        this.city = city;
-        this.email = email;
-        this.phone = phone;
-        this.password = (password != null && !password.isBlank()) ? password : "1234";
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -83,30 +66,6 @@ public class Farmer {
 
     public void setCity(String city) {
         this.city = city;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -99,7 +99,36 @@ public class DataInitializer implements CommandLineRunner {
                 "https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=900&q=85"
         ));
 
-        // No predeclared customer credentials or fake orders.
-        // All farmers and customers register dynamically through /api/auth and are stored in PostgreSQL (pgAdmin).
+        // Create Demo Customer
+        Customer customer = customerRepository.save(new Customer("CUST-1001", "Kiran Varma", "kiran@foodchain.local"));
+
+        // Seed Orders and Tracking
+        Order o1 = new Order("ORD1001", customer, p1, p1.getProductName(), p1.getProductCode(),
+                p1.getFarmerName(), 10, p1.getPrice(), p1.getPrice() * 10,
+                p1.getWarehouse(), "Gudivada", OrderStatus.IN_TRANSIT);
+        orderRepository.save(o1);
+
+        trackingHistoryRepository.save(new TrackingHistory("ORD1001", "Order Placed", "Order placed by customer"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD1001", "Prepared", "Produce sorted and packed at " + p1.getWarehouse()));
+        trackingHistoryRepository.save(new TrackingHistory("ORD1001", "Dispatched", "Dispatched towards Gudivada hub"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD1001", "In Transit", "In transit along Vijayawada-Gudivada route"));
+
+        Order o2 = new Order("ORD1000", customer, p6, p6.getProductName(), p6.getProductCode(),
+                p6.getFarmerName(), 25, p6.getPrice(), p6.getPrice() * 25,
+                p6.getWarehouse(), "Vijayawada", OrderStatus.PREPARED);
+        orderRepository.save(o2);
+        trackingHistoryRepository.save(new TrackingHistory("ORD1000", "Order Placed", "Order placed by customer"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD1000", "Prepared", "Packed at Nuzvid Warehouse"));
+
+        Order o3 = new Order("ORD0998", customer, p2, p2.getProductName(), p2.getProductCode(),
+                p2.getFarmerName(), 12, p2.getPrice(), p2.getPrice() * 12,
+                p2.getWarehouse(), "Pedana", OrderStatus.DELIVERED);
+        orderRepository.save(o3);
+        trackingHistoryRepository.save(new TrackingHistory("ORD0998", "Order Placed", "Order placed"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD0998", "Prepared", "Prepared"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD0998", "Dispatched", "Dispatched"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD0998", "In Transit", "In Transit"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD0998", "Out for Delivery", "Out for delivery"));
+        trackingHistoryRepository.save(new TrackingHistory("ORD0998", "Delivered", "Delivered to doorstep"));
     }
 }

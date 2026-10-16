@@ -77,13 +77,12 @@ export async function updateStock(productId, quantity) {
 // ==========================================
 // ORDERS
 // ==========================================
-export async function placeOrder({ productId, quantity, destination, customerId }) {
+export async function placeOrder({ productId, quantity, destination }) {
   const payload = {
     productId,
     quantity: Number(quantity),
     destination,
     destinationCity: destination,
-    customerId: customerId || null,
   };
   return await request('/orders', {
     method: 'POST',
@@ -201,8 +200,7 @@ export async function createCustomer(customer) {
 }
 
 export async function getCustomerOrders(customerId) {
-  if (!customerId) return [];
-  return await request(`/orders/customer/${encodeURIComponent(customerId)}`);
+  return await request(`/customers/${encodeURIComponent(customerId)}/orders`);
 }
 
 // User (Farmer / Producer domain) endpoints
@@ -214,35 +212,6 @@ export async function createUser(userData) {
   return await request('/users', {
     method: 'POST',
     body: JSON.stringify(userData),
-  });
-}
-
-// Real PostgreSQL-backed Authentication (pgAdmin storage)
-export async function loginFarmerApi({ identifier, password }) {
-  return await request('/auth/farmer/login', {
-    method: 'POST',
-    body: JSON.stringify({ identifier, password }),
-  });
-}
-
-export async function registerFarmerApi(farmerData) {
-  return await request('/auth/farmer/register', {
-    method: 'POST',
-    body: JSON.stringify(farmerData),
-  });
-}
-
-export async function loginCustomerApi({ identifier, password }) {
-  return await request('/auth/customer/login', {
-    method: 'POST',
-    body: JSON.stringify({ identifier, password }),
-  });
-}
-
-export async function registerCustomerApi(customerData) {
-  return await request('/auth/customer/register', {
-    method: 'POST',
-    body: JSON.stringify(customerData),
   });
 }
 

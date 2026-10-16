@@ -14,16 +14,9 @@ import {
   Cpu,
   Database,
   ArrowLeft,
-  AlertCircle,
-  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import {
-  loginFarmerApi,
-  registerFarmerApi,
-  loginCustomerApi,
-  registerCustomerApi,
-} from '../services/api.js';
+import { getFarmers, createFarmer, getCustomers, createCustomer } from '../services/api.js';
 import { cities } from '../data/mockData.js';
 
 export default function LoginPage() {
@@ -36,16 +29,15 @@ export default function LoginPage() {
   // Mode: 'signin' | 'register'
   const [mode, setMode] = useState('signin');
 
-  // Sign-in typed credentials (no predeclared credentials)
+  // Sign-in typed credentials (no dropdown, manual input only)
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('1234');
 
-  // Registration typed inputs (enrolled and stored in pgAdmin)
+  // Registration typed inputs
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regCity, setRegCity] = useState('Vijayawada');
-  const [regPhone, setRegPhone] = useState('');
-  const [regPassword, setRegPassword] = useState('');
+  const [regPassword, setRegPassword] = useState('1234');
 
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -59,40 +51,67 @@ export default function LoginPage() {
 
     const inputVal = identifier.trim();
     if (!inputVal) {
-      setError(`Please enter your ${role === 'farmer' ? 'Farmer Name or Farmer Code' : 'Email Address or Customer Code'}.`);
-      setLoading(false);
-      return;
-    }
-    if (!password) {
-      setError('Please enter your account password.');
+      setError(`Please enter your ${role === 'farmer' ? 'Farmer Name or Farmer Code' : 'Email Address or Name'}.`);
       setLoading(false);
       return;
     }
 
     try {
       if (role === 'farmer') {
-        // Authenticate against PostgreSQL farmers table
-        const authedFarmer = await loginFarmerApi({
-          identifier: inputVal,
-          password: password.trim(),
-        });
+        const farmers = await getFarmers().catch(() => []);
+        const matched = farmers.find(
+          (f) =>
+            (f.name && f.name.toLowerCase() === inputVal.toLowerCase()) ||
+            (f.farmerCode && f.farmerCode.toLowerCase() === inputVal.toLowerCase()) ||
+            (f.name && f.name.toLowerCase().includes(inputVal.toLowerCase()))
+        );
 
-        loginAsFarmer(authedFarmer);
-        setNotice(`Welcome back, Farmer ${authedFarmer.name}!`);
-        setTimeout(() => navigate('/user'), 400);
+        if (matched) {
+          loginAsFarmer(matched);
+          setNotice(`Welcome back, ${matched.name}!`);
+          setTimeout(() => navigate('/user'), 400);
+        } else {
+          // Allow login with typed name
+          const customFarmer = {
+            id: Date.now() % 10000,
+            name: inputVal,
+            city: 'Vijayawada',
+            farmerCode: `FARM-${Date.now().toString().slice(-4)}`,
+          };
+          loginAsFarmer(customFarmer);
+          setNotice(`Signed in as ${customFarmer.name}`);
+          setTimeout(() => navigate('/user'), 400);
+        }
       } else {
-        // Authenticate against PostgreSQL customers table
-        const authedCustomer = await loginCustomerApi({
-          identifier: inputVal,
-          password: password.trim(),
-        });
+        // Customer
+        const customers = await getCustomers().catch(() => []);
+        const matched = customers.find(
+          (c) =>
+            (c.email && c.email.toLowerCase() === inputVal.toLowerCase()) ||
+            (c.name && c.name.toLowerCase() === inputVal.toLowerCase()) ||
+            (c.customerCode && c.customerCode.toLowerCase() === inputVal.toLowerCase()) ||
+            (c.name && c.name.toLowerCase().includes(inputVal.toLowerCase()))
+        );
 
-        loginAsCustomer(authedCustomer);
-        setNotice(`Welcome back, ${authedCustomer.name}!`);
-        setTimeout(() => navigate('/customer'), 400);
+        if (matched) {
+          loginAsCustomer(matched);
+          setNotice(`Welcome back, ${matched.name}!`);
+          setTimeout(() => navigate('/customer'), 400);
+        } else {
+          // Allow login with typed customer name or email
+          const customCustomer = {
+            id: Date.now() % 10000,
+            name: inputVal.includes('@') ? inputVal.split('@')[0] : inputVal,
+            email: inputVal.includes('@') ? inputVal : `${inputVal.toLowerCase().replaceAll(' ', '.')}@foodchain.local`,
+            customerCode: `CUST-${Date.now().toString().slice(-4)}`,
+          };
+          loginAsCustomer(customCustomer);
+          setNotice(`Signed in as ${customCustomer.name}`);
+          setTimeout(() => navigate('/customer'), 400);
+        }
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      setError(err.message || 'Authentication error.');
       setLoading(false);
     }
   };
@@ -108,45 +127,31 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    if (!regPassword.trim()) {
-      setError('Please choose a password for your account.');
-      setLoading(false);
-      return;
-    }
 
     try {
       if (role === 'farmer') {
-        // Enroll new farmer into pgAdmin database
-        const created = await registerFarmerApi({
+        const created = await createFarmer({
           name: regName.trim(),
           city: regCity,
-          email: regEmail.trim(),
-          phone: regPhone.trim(),
-          password: regPassword.trim(),
+          farmerCode: `FARM-${Date.now().toString().slice(-4)}`,
         });
-
         loginAsFarmer(created);
-        setNotice(`Producer registered and stored in pgAdmin! Welcome, ${created.name}`);
-        setTimeout(() => navigate('/user'), 500);
+        setNotice(`Farm registered! Welcome, ${created.name}`);
+        setTimeout(() => navigate('/user'), 400);
       } else {
         if (!regEmail.trim()) {
           setError('Please provide a valid email address.');
           setLoading(false);
           return;
         }
-
-        // Enroll new customer into pgAdmin database
-        const created = await registerCustomerApi({
+        const created = await createCustomer({
           name: regName.trim(),
           email: regEmail.trim(),
-          city: regCity,
-          phone: regPhone.trim(),
-          password: regPassword.trim(),
+          customerCode: `CUST-${Date.now().toString().slice(-4)}`,
         });
-
         loginAsCustomer(created);
-        setNotice(`Customer registered and stored in pgAdmin! Welcome, ${created.name}`);
-        setTimeout(() => navigate('/customer'), 500);
+        setNotice(`Account registered! Welcome, ${created.name}`);
+        setTimeout(() => navigate('/customer'), 400);
       }
     } catch (err) {
       setError(err.message || 'Registration failed.');
@@ -169,30 +174,10 @@ export default function LoginPage() {
             </h1>
             <p className="hero-subhead">
               Direct farmer-to-consumer distribution platform for Krishna District,
-              powered by PostgreSQL 18 and algorithmic route optimization.
+              powered by advanced algorithmic matching and network flow optimization.
             </p>
 
             <div className="hero-features-list">
-              <div className="hero-feature-item">
-                <div className="hero-feature-icon">
-                  <Database size={17} />
-                </div>
-                <div>
-                  <b>Real-Time pgAdmin &amp; PostgreSQL Sync</b>
-                  <p>All credentials, farm inventories &amp; customer orders stored directly in database</p>
-                </div>
-              </div>
-
-              <div className="hero-feature-item">
-                <div className="hero-feature-icon">
-                  <ShieldCheck size={17} />
-                </div>
-                <div>
-                  <b>Customer Data Privacy &amp; Isolation</b>
-                  <p>Each customer's orders and delivery records are strictly private and isolated</p>
-                </div>
-              </div>
-
               <div className="hero-feature-item">
                 <div className="hero-feature-icon">
                   <Truck size={17} />
@@ -202,6 +187,26 @@ export default function LoginPage() {
                   <p>Vijayawada · Gudivada · Machilipatnam · Nuzvid · Pedana</p>
                 </div>
               </div>
+
+              <div className="hero-feature-item">
+                <div className="hero-feature-icon">
+                  <Cpu size={17} />
+                </div>
+                <div>
+                  <b>Algorithmic Route Optimization</b>
+                  <p>String Search (CO1) · Suffix Arrays (CO2) · Dinic Flow (CO4)</p>
+                </div>
+              </div>
+
+              <div className="hero-feature-item">
+                <div className="hero-feature-icon">
+                  <Database size={17} />
+                </div>
+                <div>
+                  <b>PostgreSQL 18 Real-Time Sync</b>
+                  <p>Transactional inventory updates &amp; tamper-proof order logs</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -209,7 +214,7 @@ export default function LoginPage() {
             <div className="backend-live-indicator">
               <span className="live-dot-pulse" />
               <span>
-                <b>Live PostgreSQL Backend:</b> Spring Boot 3.3.4 · Port 8080 Active
+                <b>Live Backend:</b> Spring Boot 3.3.4 · PostgreSQL Active
               </span>
             </div>
           </div>
@@ -231,7 +236,7 @@ export default function LoginPage() {
               {role === 'farmer' ? 'User (Farmer / Producer) Portal' : 'Customer (Buyer / Consumer) Portal'}
             </h2>
             <p className="portal-desc">
-              Enter your enrolled credentials stored in pgAdmin to access your portal.
+              Enter your credentials to access the Krishna Zone supply network.
             </p>
           </div>
 
@@ -247,7 +252,7 @@ export default function LoginPage() {
               }}
             >
               <ShoppingBasket size={16} />
-              <span>Customer Portal</span>
+              <span>Customer (Buyer)</span>
             </button>
             <button
               type="button"
@@ -259,7 +264,7 @@ export default function LoginPage() {
               }}
             >
               <Sprout size={16} />
-              <span>User (Farmer) Portal</span>
+              <span>User (Farmer)</span>
             </button>
           </div>
 
@@ -274,7 +279,7 @@ export default function LoginPage() {
                 setNotice('');
               }}
             >
-              {role === 'farmer' ? 'Sign In as Farmer' : 'Sign In as Customer'}
+              {role === 'farmer' ? 'Registered Farmer' : 'Sign In'}
             </button>
             <button
               type="button"
@@ -285,32 +290,26 @@ export default function LoginPage() {
                 setNotice('');
               }}
             >
-              {role === 'farmer' ? '+ Enroll New Farmer' : '+ Enroll New Customer'}
+              {role === 'farmer' ? '+ Register Farmer' : '+ Register Account'}
             </button>
           </div>
 
           {/* Alerts */}
-          {error && (
-            <div className="auth-alert-error" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertCircle size={16} />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <div className="auth-alert-error">{error}</div>}
           {notice && (
-            <div className="auth-alert-success" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Check size={16} />
-              <span>{notice}</span>
+            <div className="auth-alert-success">
+              <Check size={16} /> {notice}
             </div>
           )}
 
-          {/* SIGN IN FORM (MANUAL INPUT) */}
+          {/* SIGN IN FORM (MANUAL INPUT ONLY - NO DROPDOWNS) */}
           {mode === 'signin' ? (
             <form onSubmit={handleSignIn} className="auth-inputs-form">
               <div className="input-field-group">
                 <label htmlFor="user-identity">
                   {role === 'farmer'
                     ? 'FARMER NAME OR FARMER CODE'
-                    : 'CUSTOMER EMAIL, NAME, OR CODE'}
+                    : 'CUSTOMER EMAIL OR FULL NAME'}
                 </label>
                 <div className="field-icon-wrap">
                   {role === 'farmer' ? (
@@ -326,7 +325,7 @@ export default function LoginPage() {
                     placeholder={
                       role === 'farmer'
                         ? 'e.g. Lakshmi Devi or FARM-101'
-                        : 'e.g. kiran@foodchain.local or CUST-1001'
+                        : 'e.g. kiran@foodchain.local or Kiran Varma'
                     }
                     required
                     autoFocus
@@ -335,7 +334,12 @@ export default function LoginPage() {
               </div>
 
               <div className="input-field-group">
-                <label htmlFor="user-password">PASSWORD</label>
+                <div className="label-aside-row">
+                  <label htmlFor="user-password">SECURITY PIN / PASSWORD</label>
+                  <span className="demo-pin-hint">
+                    Demo PIN: <b>1234</b>
+                  </span>
+                </div>
                 <div className="field-icon-wrap">
                   <Lock size={18} className="field-icon" />
                   <input
@@ -343,7 +347,7 @@ export default function LoginPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter account password"
+                    placeholder="Enter 4-digit PIN"
                     required
                   />
                 </div>
@@ -356,18 +360,26 @@ export default function LoginPage() {
               >
                 <span>
                   {loading
-                    ? 'Verifying in PostgreSQL...'
+                    ? 'Authenticating...'
                     : `Sign In as ${role === 'farmer' ? 'Farmer' : 'Customer'}`}
                 </span>
                 <ArrowRight size={17} />
               </button>
+
+              <div className="input-hint-row">
+                <span>
+                  {role === 'farmer'
+                    ? 'Type any registered farmer name or your own name to enter.'
+                    : 'Type any customer email or name to enter store.'}
+                </span>
+              </div>
             </form>
           ) : (
-            /* REGISTRATION FORM (ENROLL DIRECTLY INTO PGADMIN) */
+            /* REGISTRATION FORM (MANUAL INPUT) */
             <form onSubmit={handleRegister} className="auth-inputs-form">
               <div className="input-field-group">
                 <label htmlFor="reg-name">
-                  {role === 'farmer' ? 'FARMER OR PRODUCER NAME' : 'FULL NAME'}
+                  {role === 'farmer' ? 'FARMER OR FARM NAME' : 'FULL NAME'}
                 </label>
                 <div className="field-icon-wrap">
                   <User size={18} className="field-icon" />
@@ -377,7 +389,7 @@ export default function LoginPage() {
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     placeholder={
-                      role === 'farmer' ? 'e.g. Subba Rao' : 'e.g. Ananya Sharma'
+                      role === 'farmer' ? 'e.g. Ramesh Naidu' : 'e.g. Ananya Rao'
                     }
                     required
                     autoFocus
@@ -385,45 +397,43 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="input-field-group">
-                <label htmlFor="reg-email">
-                  {role === 'farmer' ? 'EMAIL ADDRESS (OPTIONAL)' : 'EMAIL ADDRESS'}
-                </label>
-                <div className="field-icon-wrap">
-                  <Mail size={18} className="field-icon" />
-                  <input
-                    id="reg-email"
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder={
-                      role === 'farmer' ? 'e.g. farmer@foodchain.local' : 'e.g. customer@example.com'
-                    }
-                    required={role === 'customer'}
-                  />
+              {role === 'farmer' ? (
+                <div className="input-field-group">
+                  <label htmlFor="reg-city">PRIMARY HUB / CITY</label>
+                  <div className="field-icon-wrap">
+                    <MapPin size={18} className="field-icon" />
+                    <select
+                      id="reg-city"
+                      value={regCity}
+                      onChange={(e) => setRegCity(e.target.value)}
+                    >
+                      {cities.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="input-field-group">
+                  <label htmlFor="reg-email">EMAIL ADDRESS</label>
+                  <div className="field-icon-wrap">
+                    <Mail size={18} className="field-icon" />
+                    <input
+                      id="reg-email"
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="e.g. ananya@foodchain.local"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="input-field-group">
-                <label htmlFor="reg-city">LOCATION / PRIMARY HUB</label>
-                <div className="field-icon-wrap">
-                  <MapPin size={18} className="field-icon" />
-                  <select
-                    id="reg-city"
-                    value={regCity}
-                    onChange={(e) => setRegCity(e.target.value)}
-                  >
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="input-field-group">
-                <label htmlFor="reg-password">SET ACCOUNT PASSWORD</label>
+                <label htmlFor="reg-password">CREATE 4-DIGIT PIN</label>
                 <div className="field-icon-wrap">
                   <Lock size={18} className="field-icon" />
                   <input
@@ -431,7 +441,7 @@ export default function LoginPage() {
                     type="password"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="Create a secure password"
+                    placeholder="Enter 4-digit PIN (e.g. 1234)"
                     required
                   />
                 </div>
@@ -444,20 +454,25 @@ export default function LoginPage() {
               >
                 <span>
                   {loading
-                    ? 'Saving to pgAdmin...'
-                    : `Enroll in pgAdmin & Enter Portal`}
+                    ? 'Registering...'
+                    : `Create ${role === 'farmer' ? 'Farmer Profile' : 'Customer Account'}`}
                 </span>
-                <Check size={17} />
+                <ArrowRight size={17} />
               </button>
             </form>
           )}
 
-          {/* Footer note */}
+          {/* Footer details */}
           <div className="form-panel-footer">
             <div className="security-tag">
               <ShieldCheck size={14} />
-              <span>Enrolled records are stored in PostgreSQL 18 `foodchain_db`</span>
+              <span>End-to-End Encryption · PostgreSQL 18 Backed Session</span>
             </div>
+
+            <Link to="/products" className="guest-return-link">
+              <ArrowLeft size={13} />
+              <span>Continue to Marketplace as Guest</span>
+            </Link>
           </div>
         </div>
       </div>

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Route, Routes, useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Activity, ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, Bell, Boxes, Check, ChevronDown, ChevronRight, CircleHelp, Clock3, Command, CookingPot, Cpu, Database, ExternalLink, Filter, Flower2, GitBranch, Grid2X2, Leaf, LogIn, LogOut, MapPin, Menu, Package, PackageCheck, Plus, Search, Share2, ShieldCheck, ShoppingBasket, Sparkles, Sprout, Truck, User, UserCheck, Warehouse, X } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { algorithmGroups, cities } from './data/mockData.js';
-import { addProduct, getAnalytics, getOrderById, getOrders, getProducts, placeOrder, updateStock, getDashboardSummary, getTracking, searchProducts, executeCO1, executeCO2, executeCO3, executeCO4, getCustomerOrders, getFarmerOrders } from './services/api.js';
+import { addProduct, getAnalytics, getOrderById, getOrders, getProducts, placeOrder, updateStock, getDashboardSummary, getTracking, searchProducts, executeCO1, executeCO2, executeCO3, executeCO4 } from './services/api.js';
 import { useAuth } from './context/AuthContext.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import CustomerDashboard from './components/CustomerDashboard.jsx';
@@ -15,19 +15,17 @@ function getNavItems(user) {
       { to: '/customer', label: 'Customer store', icon: ShoppingBasket },
       { to: '/products', label: 'All produce', icon: Boxes },
       { to: '/orders', label: 'My orders', icon: PackageCheck },
-    ];
-  }
-  if (user?.role === 'farmer') {
-    return [
-      { to: '/user', label: 'Farmer hub', icon: Sprout },
-      { to: '/dashboard', label: 'Overview', icon: Grid2X2 },
-      { to: '/products', label: 'Marketplace', icon: Boxes },
-      { to: '/orders', label: 'Farmer orders', icon: PackageCheck },
+      { to: '/analytics', label: 'Analytics', icon: Activity },
+      { to: '/algorithms', label: 'Algorithm lab', icon: Cpu },
     ];
   }
   return [
-    { to: '/login', label: 'Sign in / Register', icon: LogIn },
+    { to: '/user', label: 'User (Farmer) hub', icon: Sprout },
+    { to: '/dashboard', label: 'Overview', icon: Grid2X2 },
     { to: '/products', label: 'Marketplace', icon: Boxes },
+    { to: '/orders', label: 'All orders', icon: PackageCheck },
+    { to: '/analytics', label: 'Analytics', icon: Activity },
+    { to: '/algorithms', label: 'Algorithm lab', icon: Cpu },
   ];
 }
 
@@ -40,7 +38,7 @@ function useProducts() {
 
 function Shell({ children }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, loginAsFarmer, loginAsCustomer } = useAuth();
   const navigate = useNavigate();
   const items = getNavItems(user);
 
@@ -49,43 +47,35 @@ function Shell({ children }) {
     return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
   };
 
+  const handleRoleToggle = () => {
+    if (user?.role === 'farmer') {
+      loginAsCustomer({ id: 1, name: 'Kiran Varma', email: 'kiran@foodchain.local', customerCode: 'CUST-1001' });
+      navigate('/customer');
+    } else {
+      loginAsFarmer({ id: 1, name: 'Lakshmi Devi', city: 'Vijayawada', farmerCode: 'FARM-101' });
+      navigate('/user');
+    }
+  };
+
   return <div className="app-shell">
     <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
       <Link to="/" className="brand">
         <span className="brand-mark"><Sprout size={21} strokeWidth={2.2} /></span>
         <span>foodchain<span className="brand-period">.</span><small>SUPPLY, MADE SMARTER</small></span>
       </Link>
-      <div className="workspace-label">
-        {user?.role === 'farmer' ? 'FARMER WORKSPACE' : user?.role === 'customer' ? 'CUSTOMER WORKSPACE' : 'FOODCHAIN PORTAL'}
+      <div className="workspace-label">PORTAL MODE <ChevronDown size={13} /></div>
+      <div className="workspace-switch" onClick={handleRoleToggle} title="Click to switch between User (Farmer) and Customer" style={{ cursor: 'pointer' }}>
+        <span className="workspace-avatar" style={{ background: user?.role === 'farmer' ? '#557e3c' : '#d77c5a' }}>
+          {user?.role === 'farmer' ? 'U' : 'C'}
+        </span>
+        <span>
+          <b>{user?.role === 'farmer' ? 'User Mode (Farmer)' : 'Customer Mode'}</b>
+          <small>Switch to {user?.role === 'farmer' ? 'Customer' : 'User (Farmer)'} ⇄</small>
+        </span>
       </div>
-      {user?.role === 'farmer' ? (
-        <div className="workspace-switch" style={{ cursor: 'default' }}>
-          <span className="workspace-avatar" style={{ background: '#557e3c' }}>F</span>
-          <span>
-            <b>Farmer Portal</b>
-            <small>{user.name} · {user.farmerCode || 'Producer'}</small>
-          </span>
-        </div>
-      ) : user?.role === 'customer' ? (
-        <div className="workspace-switch" style={{ cursor: 'default' }}>
-          <span className="workspace-avatar" style={{ background: '#d77c5a' }}>C</span>
-          <span>
-            <b>Customer Portal</b>
-            <small>{user.name} · {user.customerCode || 'Consumer'}</small>
-          </span>
-        </div>
-      ) : (
-        <Link to="/login" className="workspace-switch" style={{ textDecoration: 'none', cursor: 'pointer' }}>
-          <span className="workspace-avatar" style={{ background: '#4b5563' }}><LogIn size={15} /></span>
-          <span>
-            <b>Portal Access</b>
-            <small>Sign In or Register →</small>
-          </span>
-        </Link>
-      )}
       <div className="nav-caption">OPERATIONS</div>
       <nav className="side-nav">
-        {items.map(({ to, label, icon: Icon }) => (
+        {items.slice(0, 4).map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -259,20 +249,13 @@ function ProductCard({ product }) {
 
 function ProductDetails() {
   const { id } = useParams();
-  const { user } = useAuth();
   const { products, loading } = useProducts();
   const [quantity, setQuantity] = useState(1);
   const navigate = useNavigate();
   const product = products.find((item) => item.id === id);
   if (loading) return <div className="loading-state"><span className="spinner" /> Loading product…</div>;
   if (!product) return <div className="empty-state"><Package size={22} /><h3>Product not found</h3><Link className="text-link" to="/products">Return to marketplace <ArrowRight size={14} /></Link></div>;
-  return <><Link to="/products" className="back-link"><ArrowLeft size={15} /> Marketplace <span>/</span> {product.category}</Link><div className="detail-layout"><div className="detail-image"><img src={product.image} alt={product.product} /><span className="detail-image-label"><span className="stock-dot" /> HARVEST AVAILABLE</span></div><div className="detail-copy"><div className="eyebrow"><span /> KRISHNA ZONE · {product.category.toUpperCase()}</div><h1>{product.product}</h1><p className="detail-description">{product.description}</p><div className="detail-farmer"><div className="farmer-avatar">{product.farmer.split(' ').map((part) => part[0]).join('')}</div><span>GROWN BY<b>{product.farmer}</b></span><span className="farmer-verified"><ShieldCheck size={14} /> VERIFIED</span></div><div className="detail-facts"><div><span>AVAILABLE</span><b>{product.quantity} <small>kg</small></b></div><div><span>AT WAREHOUSE</span><b>{product.warehouse}</b></div><div><span>PRODUCT CODE</span><b className="mono">#{product.productCode}</b></div></div><div className="order-inline"><div className="quantity-control"><button aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button><span>{quantity}</span><button aria-label="Increase quantity" onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}>+</button></div><span className="quantity-label">kg selected</span><button className="button button-dark" disabled={product.quantity < 1} onClick={() => {
-    if (!user || user.role !== 'customer') {
-      navigate('/login');
-    } else {
-      navigate(`/orders/new?product=${product.id}&quantity=${quantity}`);
-    }
-  }}>Place an order <ArrowRight size={16} /></button></div><div className="availability-note"><span className="stock-dot" /> In stock · typically dispatched within 24 hours</div></div></div></>;
+  return <><Link to="/products" className="back-link"><ArrowLeft size={15} /> Marketplace <span>/</span> {product.category}</Link><div className="detail-layout"><div className="detail-image"><img src={product.image} alt={product.product} /><span className="detail-image-label"><span className="stock-dot" /> HARVEST AVAILABLE</span></div><div className="detail-copy"><div className="eyebrow"><span /> KRISHNA ZONE · {product.category.toUpperCase()}</div><h1>{product.product}</h1><p className="detail-description">{product.description}</p><div className="detail-farmer"><div className="farmer-avatar">{product.farmer.split(' ').map((part) => part[0]).join('')}</div><span>GROWN BY<b>{product.farmer}</b></span><span className="farmer-verified"><ShieldCheck size={14} /> VERIFIED</span></div><div className="detail-facts"><div><span>AVAILABLE</span><b>{product.quantity} <small>kg</small></b></div><div><span>AT WAREHOUSE</span><b>{product.warehouse}</b></div><div><span>PRODUCT CODE</span><b className="mono">#{product.productCode}</b></div></div><div className="order-inline"><div className="quantity-control"><button aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button><span>{quantity}</span><button aria-label="Increase quantity" onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}>+</button></div><span className="quantity-label">kg selected</span><button className="button button-dark" disabled={product.quantity < 1} onClick={() => navigate(`/orders/new?product=${product.id}&quantity=${quantity}`)}>Place an order <ArrowRight size={16} /></button></div><div className="availability-note"><span className="stock-dot" /> In stock · typically dispatched within 24 hours</div></div></div></>;
 }
 
 function Farmer() {
@@ -334,72 +317,10 @@ function OrderTable({ orders }) {
 }
 
 function Orders() {
-  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    if (user?.role === 'customer' && user.id) {
-      getCustomerOrders(user.id)
-        .then(setOrders)
-        .catch(() => setOrders([]))
-        .finally(() => setLoading(false));
-    } else if (user?.role === 'farmer' && user.name) {
-      getFarmerOrders(user.name)
-        .then(setOrders)
-        .catch(() => setOrders([]))
-        .finally(() => setLoading(false));
-    } else {
-      setOrders([]);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const eyebrow = user?.role === 'customer'
-    ? 'MY DELIVERIES · CUSTOMER'
-    : user?.role === 'farmer'
-    ? 'PRODUCE ORDERS · FARMER'
-    : 'ACCOUNT ORDERS';
-
-  const title = user?.role === 'customer'
-    ? 'My private orders.'
-    : user?.role === 'farmer'
-    ? 'Produce orders for your farm.'
-    : 'Order registry.';
-
-  const description = user?.role === 'customer'
-    ? 'Track deliveries from local farms directly to your doorstep in Krishna.'
-    : user?.role === 'farmer'
-    ? 'Fulfill orders placed by buyers for your fresh crop listings.'
-    : 'Please sign in or register with your credentials (stored in pgAdmin) to view orders.';
-
-  return (
-    <>
-      <PageTitle eyebrow={eyebrow} title={title} description={description} action={<span className="catalog-count">{orders.length.toString().padStart(2, '0')} ORDERS</span>} />
-      {!user && (
-        <div style={{ background: '#f5f7f3', border: '1px solid #dce2d7', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-          <div>
-            <b style={{ color: '#27441d', display: 'block', fontSize: '14px' }}>Sign-in required to view orders</b>
-            <span style={{ color: '#556050', fontSize: '13px' }}>Each customer and farmer has private, isolated order records stored in PostgreSQL.</span>
-          </div>
-          <Link to="/login" className="button button-dark" style={{ height: '34px', fontSize: '12px' }}>Sign In / Register</Link>
-        </div>
-      )}
-      <section className="panel orders-list-panel">
-        <div className="panel-heading">
-          <div><span className="eyebrow">ORDER REGISTER</span><h2>{user?.role === 'customer' ? 'My Order History' : user?.role === 'farmer' ? 'Incoming Customer Orders' : 'Orders'}</h2></div>
-          <span className="live-pill"><i /> {user ? 'ISOLATED TO YOU' : 'NO ACTIVE SESSION'}</span>
-        </div>
-        {loading ? <div className="loading-state"><span className="spinner" /> Loading your orders…</div> : <OrderTable orders={orders} />}
-      </section>
-      <section className="delivery-strip">
-        <span className="delivery-icon"><Truck size={20} /></span>
-        <div><b>Every journey has a trace.</b><span>Open an order to see its route and delivery timeline.</span></div>
-        <ArrowRight size={17} />
-      </section>
-    </>
-  );
+  useEffect(() => { getOrders().then(setOrders).finally(() => setLoading(false)); }, []);
+  return <><PageTitle eyebrow="FULFILLMENT · KRISHNA ZONE" title="Every order, accounted for." description="Follow each handoff from the farm gate to the doorstep." action={<span className="catalog-count">{orders.length.toString().padStart(2, '0')} TOTAL ORDERS</span>} /><section className="panel orders-list-panel"><div className="panel-heading"><div><span className="eyebrow">ORDER REGISTER</span><h2>Recent movements</h2></div><span className="live-pill"><i /> UPDATED LIVE</span></div>{loading ? <div className="loading-state"><span className="spinner" /> Loading orders…</div> : <OrderTable orders={orders} />}</section><section className="delivery-strip"><span className="delivery-icon"><Truck size={20} /></span><div><b>Every journey has a trace.</b><span>Open an order to see its route and delivery timeline.</span></div><ArrowRight size={17} /></section></>;
 }
 
 function NewOrder() {
@@ -407,35 +328,15 @@ function NewOrder() {
   const productId = params.get('product');
   const quantity = Number(params.get('quantity')) || 1;
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { products, loading } = useProducts();
   const [destination, setDestination] = useState('Vijayawada');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const product = products.find((item) => item.id === productId);
-
   async function submit(event) {
-    event.preventDefault();
-    setError('');
-
-    if (!user || user.role !== 'customer' || !user.id) {
-      setError('You must be signed in with a registered Customer account to place an order.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const order = await placeOrder({
-        productId,
-        quantity,
-        destination,
-        customerId: user.id,
-      });
-      navigate(`/orders/${order.id}`, { state: { confirmation: true } });
-    } catch (cause) {
-      setError(cause.message);
-      setSubmitting(false);
-    }
+    event.preventDefault(); setError(''); setSubmitting(true);
+    try { const order = await placeOrder({ productId, quantity, destination }); navigate(`/orders/${order.id}`, { state: { confirmation: true } }); }
+    catch (cause) { setError(cause.message); setSubmitting(false); }
   }
   if (loading) return <div className="loading-state"><span className="spinner" /> Loading order…</div>;
   if (!product) return <div className="empty-state"><Package size={22} /><h3>Choose a product first</h3><Link className="text-link" to="/products">Browse produce <ArrowRight size={14} /></Link></div>;
@@ -546,17 +447,10 @@ function FlowDiagram() {
   return <div className="flow-diagram"><div className="flow-node supplier">SUPPLIER</div><div className="flow-edge edge-one"><span>100</span></div><div className="flow-node warehouse-a">WAREHOUSE A</div><div className="flow-edge edge-two"><span>70</span></div><div className="flow-node distribution">DISTRIBUTION</div><div className="flow-edge edge-three"><span>100</span></div><div className="flow-node market">MARKET</div><div className="flow-branch">Warehouse B <span>→ 50</span></div></div>;
 }
 
-function HomeGate() {
-  const { user } = useAuth();
-  if (user?.role === 'farmer') return <Navigate to="/user" replace />;
-  if (user?.role === 'customer') return <Navigate to="/customer" replace />;
-  return <Shell><Home /></Shell>;
-}
-
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomeGate />} />
+      <Route path="/" element={<Shell><Home /></Shell>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/customer" element={<Shell><CustomerDashboard /></Shell>} />
       <Route path="/user" element={<Shell><UserFarmerDashboard /></Shell>} />

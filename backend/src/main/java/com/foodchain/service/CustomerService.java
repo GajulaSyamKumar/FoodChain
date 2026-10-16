@@ -36,11 +36,7 @@ public class CustomerService {
         Customer customer = new Customer();
         customer.setName(request.getName());
         customer.setEmail(request.getEmail());
-        customer.setPhone(request.getPhone());
-        customer.setCity(request.getCity() != null && !request.getCity().isBlank() ? request.getCity() : "Vijayawada");
-        customer.setAddress(request.getAddress());
-        customer.setPassword(request.getPassword() != null && !request.getPassword().isBlank() ? request.getPassword() : "1234");
-        customer.setCustomerCode(request.getCustomerCode() != null && !request.getCustomerCode().isBlank() ? request.getCustomerCode() : "CUST-" + (System.currentTimeMillis() % 10000));
+        customer.setCustomerCode(request.getCustomerCode() != null ? request.getCustomerCode() : "CUST-" + System.currentTimeMillis());
         Customer saved = customerRepository.save(customer);
         return CustomerDto.fromEntity(saved);
     }
@@ -53,7 +49,6 @@ public class CustomerService {
 
     public List<OrderResponse> getCustomerOrders(Long customerId) {
         return orderRepository.findByCustomerId(customerId).stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(OrderResponse::fromEntity)
                 .collect(Collectors.toList());
     }

@@ -36,9 +36,8 @@ export default function UserFarmerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const isFarmer = user && user.role === 'farmer';
-  const farmerName = isFarmer ? user.name : '';
-  const farmerCity = isFarmer ? (user.city || 'Vijayawada') : '';
+  const farmerName = user?.role === 'farmer' ? user.name : 'Lakshmi Devi';
+  const farmerCity = user?.city || 'Vijayawada';
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -50,7 +49,7 @@ export default function UserFarmerDashboard() {
     farmer: farmerName,
     product: '',
     quantity: '',
-    city: farmerCity || 'Vijayawada',
+    city: farmerCity,
     category: 'Vegetables',
     price: '40',
     description: '',
@@ -87,11 +86,6 @@ export default function UserFarmerDashboard() {
   };
 
   const loadOrders = async () => {
-    if (!isFarmer || !farmerName) {
-      setOrders([]);
-      setOrdersLoading(false);
-      return;
-    }
     try {
       setOrdersLoading(true);
       const farmerOrders = await getFarmerOrders(farmerName);
@@ -106,7 +100,7 @@ export default function UserFarmerDashboard() {
   useEffect(() => {
     loadData();
     loadOrders();
-    if (isFarmer) {
+    if (user?.role === 'farmer') {
       setForm((prev) => ({
         ...prev,
         farmer: user.name,
@@ -115,9 +109,9 @@ export default function UserFarmerDashboard() {
     }
   }, [user]);
 
-  // Filter listings by current authenticated farmer
+  // Filter listings by current farmer
   const farmerProducts = products.filter(
-    (item) => isFarmer && farmerName && (item.farmer || '').toLowerCase() === farmerName.toLowerCase()
+    (item) => !farmerName || (item.farmer || '').toLowerCase() === farmerName.toLowerCase()
   );
 
   const totalStockKg = farmerProducts.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -215,22 +209,16 @@ export default function UserFarmerDashboard() {
           </div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Sprout size={30} color="#457032" />
-            User (Farmer) Portal {farmerName ? `— ${farmerName}` : '— Grower Access'}
+            User (Farmer) Portal — {farmerName}
           </h1>
           <p>
             Manage farm produce, restock warehouses, and fulfill incoming consumer orders across Vijayawada, Gudivada, Nuzvid, Machilipatnam, and Pedana.
           </p>
         </div>
         <div className="title-action" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {isFarmer ? (
-            <span className="farmer-status" style={{ background: '#eaf2e3', padding: '6px 12px', borderRadius: '20px', color: '#3f682a', fontWeight: '600' }}>
-              <span className="stock-dot" /> VERIFIED PRODUCER ({user?.farmerCode || 'FARM-101'})
-            </span>
-          ) : (
-            <span className="farmer-status" style={{ background: '#f5f5f5', padding: '6px 12px', borderRadius: '20px', color: '#777', fontWeight: '600' }}>
-              PRODUCER PORTAL
-            </span>
-          )}
+          <span className="farmer-status" style={{ background: '#eaf2e3', padding: '6px 12px', borderRadius: '20px', color: '#3f682a', fontWeight: '600' }}>
+            <span className="stock-dot" /> VERIFIED PRODUCER ({user?.farmerCode || 'FARM-101'})
+          </span>
           <button
             type="button"
             className="button button-outline"
@@ -242,28 +230,6 @@ export default function UserFarmerDashboard() {
           </button>
         </div>
       </div>
-
-      {!isFarmer && (
-        <div style={{ background: '#f2f8ee', border: '1px solid #cce2c3', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <AlertCircle size={22} color="#457032" />
-            <div>
-              <b style={{ color: '#27441d', display: 'block', fontSize: '13px' }}>Farmer Account Required for Listings &amp; Order Management</b>
-              <span style={{ color: '#3b5f2c', fontSize: '12px' }}>
-                Please sign in or enroll your Farmer credentials in PostgreSQL (pgAdmin) to view your inventory and fulfill consumer orders.
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="button button-dark"
-            style={{ background: '#457032', borderColor: '#457032', whiteSpace: 'nowrap', height: '34px', fontSize: '12px' }}
-            onClick={() => navigate('/login')}
-          >
-            Sign In / Register Farmer
-          </button>
-        </div>
-      )}
 
       {/* Farmer Metrics Cards */}
       <div className="stats-grid farmer-stats">

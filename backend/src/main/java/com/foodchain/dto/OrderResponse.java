@@ -7,8 +7,6 @@ import java.time.format.DateTimeFormatter;
 public class OrderResponse {
     private String id;
     private String orderId;
-    private Long customerId;
-    private String customerName;
     private String product;
     private String productName;
     private Integer productCode;
@@ -27,10 +25,6 @@ public class OrderResponse {
         OrderResponse dto = new OrderResponse();
         dto.setId(order.getOrderId());
         dto.setOrderId(order.getOrderId());
-        if (order.getCustomer() != null) {
-            dto.setCustomerId(order.getCustomer().getId());
-            dto.setCustomerName(order.getCustomer().getName());
-        }
         dto.setProduct(order.getProductName());
         dto.setProductName(order.getProductName());
         dto.setProductCode(order.getProductCode());
@@ -54,12 +48,6 @@ public class OrderResponse {
 
     public String getOrderId() { return orderId; }
     public void setOrderId(String orderId) { this.orderId = orderId; }
-
-    public Long getCustomerId() { return customerId; }
-    public void setCustomerId(Long customerId) { this.customerId = customerId; }
-
-    public String getCustomerName() { return customerName; }
-    public void setCustomerName(String customerName) { this.customerName = customerName; }
 
     public String getProduct() { return product; }
     public void setProduct(String product) { this.product = product; }

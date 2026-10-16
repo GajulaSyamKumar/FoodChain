@@ -19,14 +19,6 @@ public class Customer {
 
     private String email;
 
-    private String phone;
-
-    private String city = "Vijayawada";
-
-    private String address;
-
-    private String password = "1234";
-
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -36,17 +28,6 @@ public class Customer {
         this.customerCode = customerCode;
         this.name = name;
         this.email = email;
-        this.createdAt = LocalDateTime.now();
-    }
-
-    public Customer(String customerCode, String name, String email, String phone, String city, String address, String password) {
-        this.customerCode = customerCode;
-        this.name = name;
-        this.email = email;
-        this.phone = phone;
-        this.city = (city != null && !city.isBlank()) ? city : "Vijayawada";
-        this.address = address;
-        this.password = (password != null && !password.isBlank()) ? password : "1234";
         this.createdAt = LocalDateTime.now();
     }
 
@@ -80,38 +61,6 @@ public class Customer {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public LocalDateTime getCreatedAt() {
